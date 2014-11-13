@@ -1,0 +1,15 @@
+Discussion Question 1 (5 Points): Record the results for ./run_benchmarks withoutcache. What IPC do you see for each benchmark?
+
+Benchmark	Insts	Cycles	IPC
+-------------------------------------
+median		7875	26980	0.292
+multiply	22238	74016	0.300
+qsort		23706	79193	0.299
+towers		10348	34860	0.297
+vvadd		3027	9404	0.322
+
+
+Discussion Question 2 (5 Points): Record the results for ./run_benchmarks withcache. What IPC do you see for each benchmark?
+
+
+
