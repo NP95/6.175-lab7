@@ -11,5 +11,36 @@ vvadd		3027	9404	0.322
 
 Discussion Question 2 (5 Points): Record the results for ./run_benchmarks withcache. What IPC do you see for each benchmark?
 
+SIMULATION:
 
+Benchmark	Insts	Cycles	IPC
+-------------------------------------
+median		8245	16658	0.495
+multiply	23087	45025	0.513
+qsort		24614	54153	0.455
+towers		10584	24923	0.425
+vvadd		3029	7161	0.423
+
+
+FPGA:
+
+Benchmark       Insts           Cycles          IPC
+-----------------------------------------------------
+median          8244            17543           0.470
+multiply        23087           46994           0.491
+qsort           24612           58056           0.424
+towers          10584           43703           0.242
+vvadd           3029            13818           0.219
+median.large    20749196        43898770        0.473
+multiply.large  231458271       450184484       0.514
+qsort.large     235079768       551403590       0.426
+vvadd.large     10000030        24602440        0.406
+
+
+Discussion Question 3 (10 Points): How many cycles does the Mandelbrot program take to execute in your processor? How long does the Mandel-
+brot program take to execute in seconds? Estimate how much of a speedup you are seeing in hardware versus simulation.
+
+Cycles: 
+Seconds: 
+Speedup: 
 

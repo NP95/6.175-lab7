@@ -57,7 +57,8 @@ module mkCache( WideMem mem, Cache ifc );
     
     // Read DRAM
     rule sendFillReq( status == SendFillReq );
-        mem.req( toWideMemReq( missReq ) );
+        let r = toWideMemReq( missReq ); r.write_en = '0;
+        mem.req( r );
         status <= WaitFillResp;
     endrule
     
@@ -67,14 +68,11 @@ module mkCache( WideMem mem, Cache ifc );
         let off = getOff( missReq.addr );
         let idx = getIdx( missReq.addr );
         let tag = getTag( missReq.addr );
-        let cl  = datArr[ idx ];
         let st  = missReq.op == St;
+        let cl <- mem.resp;
         
         if( st ) cl[ off ] = missReq.data;
-        else begin
-            cl <- mem.resp;
-            hitQ.enq( cl[ off ] );
-        end
+        else hitQ.enq( cl[ off ] );
         
         datArr[ idx ] <= cl;
         tagArr[ idx ] <= tagged Valid tag;

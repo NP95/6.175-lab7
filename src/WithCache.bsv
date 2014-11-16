@@ -250,7 +250,7 @@ module mkProc(Proc);
         end else begin
             
             // Execute
-            $fwrite( stderr, "%x %x %x %x %x\n", e.pc, e.ppc, e.dInst.iType, e.rVal1, e.rVal2 );
+            //$fwrite( stderr, "%x %x %x %x %x\n", e.pc, e.ppc, e.dInst.iType, e.rVal1, e.rVal2 );
             let eInst = exec( e.dInst, e.rVal1, e.rVal2, e.pc, e.ppc, e.copVal );
             if( eInst.iType == Unsupported ) begin
                 $fwrite( stderr, "Executing unsupported instruction at pc: %x. Exiting\n", e.pc );
