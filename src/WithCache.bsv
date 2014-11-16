@@ -130,8 +130,9 @@ module mkProc(Proc);
             
             // Fetch Instruction
             let pc  = pc_reg;
-            let ppc = btb.predPc(pc);
+            let ppc = btb.predPc( pc );
             iCache.req( MemReq{ op: Ld, addr: pc, data: ? } );
+            //$fwrite( stderr, "iCache pc: %x\n", pc );
             
             // Update PC
             pc_reg <= ppc;
@@ -142,7 +143,7 @@ module mkProc(Proc);
 	    d.ppc = ppc;
             d.dEp = fdEp;
             d.eEp = feEp;
-            decodeFifo.enq(d);
+            decodeFifo.enq( d );
 
         end
     endrule
@@ -158,10 +159,10 @@ module mkProc(Proc);
         
         // Predict Branch
         let nextPc  = d.pc + 4;
-        let taken   = bht.predict(d.pc);
-        if( dInst.iType == J ) nextPc[27:0] = validValue(dInst.imm)[27:0];
+        let taken   = bht.predict( d.pc );
+        if( dInst.iType == J ) nextPc[ 27:0 ] = validValue( dInst.imm )[ 27:0 ];
         else if( dInst.iType == Jr ) begin if( taken ) nextPc = d.ppc; end
-        else if( dInst.iType == Br ) begin if( taken ) nextPc = nextPc + validValue(dInst.imm); end
+        else if( dInst.iType == Br ) begin if( taken ) nextPc = nextPc + validValue( dInst.imm ); end
         else nextPc = d.ppc;
         
         if( d.eEp != deEp ) begin
@@ -174,7 +175,7 @@ module mkProc(Proc);
             rr.ppc   = nextPc;
             rr.dInst = dInst;
             rr.eEp   = d.eEp;
-            regReadFifo.enq(rr);
+            regReadFifo.enq( rr );
             
             // Handle misprediction
             if( d.ppc != nextPc ) begin
@@ -182,7 +183,7 @@ module mkProc(Proc);
                 DecodeRedirect dr;
                 dr.nextPc = nextPc;
                 dr.eEp    = d.eEp;
-                dRedirectFifo.enq(dr);
+                dRedirectFifo.enq( dr );
             end
             
             dEp <= next_dEp;
@@ -195,7 +196,7 @@ module mkProc(Proc);
             rr.ppc   = nextPc;
             rr.dInst = dInst;
             rr.eEp   = d.eEp;
-            regReadFifo.enq(rr);
+            regReadFifo.enq( rr );
 
             // Handle misprediction
             if( d.ppc != nextPc ) begin
@@ -203,7 +204,7 @@ module mkProc(Proc);
                 DecodeRedirect dr;
                 dr.nextPc = nextPc;
                 dr.eEp    = d.eEp;
-                dRedirectFifo.enq(dr);
+                dRedirectFifo.enq( dr );
             end
             
         end
@@ -219,8 +220,6 @@ module mkProc(Proc);
         Bool stall = sb.search1( rr.dInst.src1 ) || sb.search2( rr.dInst.src2 );
 	if( !stall ) begin
             
-            regReadFifo.deq;
-            
             // Create and push RegRead2Execute
             RegRead2Execute e;
             e.pc     = rr.pc;
@@ -230,10 +229,12 @@ module mkProc(Proc);
             e.rVal2  = rf.rd2( validRegValue( rr.dInst.src2 ) );
             e.copVal = cop.rd( validRegValue( rr.dInst.src1 ) );
             e.eEp    = rr.eEp;
-            executeFifo.enq(e);
+            executeFifo.enq( e );
             
             // Update scoreboard
             sb.insert( rr.dInst.dst );
+            
+            regReadFifo.deq;
             
 	end
         
@@ -249,8 +250,9 @@ module mkProc(Proc);
         end else begin
             
             // Execute
+            $fwrite( stderr, "%x %x %x %x %x\n", e.pc, e.ppc, e.dInst.iType, e.rVal1, e.rVal2 );
             let eInst = exec( e.dInst, e.rVal1, e.rVal2, e.pc, e.ppc, e.copVal );
-            if(eInst.iType == Unsupported) begin
+            if( eInst.iType == Unsupported ) begin
                 $fwrite( stderr, "Executing unsupported instruction at pc: %x. Exiting\n", e.pc );
                 $finish;
             end
@@ -266,7 +268,7 @@ module mkProc(Proc);
                 eR.iType      = eInst.iType;
                 eR.taken      = eInst.brTaken;
                 eR.mispredict = eInst.mispredict;
-                eRedirectFifo.enq(eR);
+                eRedirectFifo.enq( eR );
             end
             
             // Push Exec2Commit
@@ -275,7 +277,7 @@ module mkProc(Proc);
             c.dst   = eInst.dst;
             c.data  = eInst.data;
             c.addr  = eInst.addr;
-            memoryFifo.enq(c);
+            memoryFifo.enq( c );
             
         end
         
@@ -289,9 +291,10 @@ module mkProc(Proc);
         // Memory
         if( c.iType == Ld ) dCache.req( MemReq{ op: Ld, addr: c.addr, data: c.data } );
         if( c.iType == St ) dCache.req( MemReq{ op: St, addr: c.addr, data: c.data } );
+        //if( c.iType == Ld || c.iType == St ) $fwrite( stderr, "dCache pc: %x\n", c.addr );
         
         // Push Exec2Commit
-        writeBackFifo.enq(c);
+        writeBackFifo.enq( c );
     
     endrule
     
@@ -305,9 +308,10 @@ module mkProc(Proc);
             
         // Write Back
         if( isValid( c.dst ) && validValue( c.dst ).regType == Normal ) begin
-            rf.wr( validRegValue(c.dst), c.data );
+            rf.wr( validRegValue( c.dst ), c.data );
         end
         cop.wr( c.dst, c.data );
+        
         sb.remove;
         
     endrule

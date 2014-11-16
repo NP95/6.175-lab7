@@ -9,27 +9,27 @@ typedef enum { Ready, StartMiss, SendFillReq, WaitFillResp } CacheStatus derivin
 
 module mkTranslator( WideMem mem, Cache ifc );
     
-    Fifo#( 2, CacheWordSelect ) wordSel <- mkCFFifo;
+    Fifo#( 2, CacheWordSelect ) off <- mkCFFifo;
     
     function CacheWordSelect getOff( Addr addr ) = truncate( addr >> 2 );
     
-    method Action req( MemReq r ) if( wordSel.notFull );
-        if( r.op == Ld ) wordSel.enq( getOff( r.addr ) );
+    method Action req( MemReq r );
+        if( r.op == Ld ) off.enq( getOff( r.addr ) );
         mem.req( toWideMemReq( r ) );
     endmethod
     
-    method ActionValue#( MemResp ) resp if( wordSel.notEmpty );
-        let cl <- mem.resp; wordSel.deq;
-        return cl[ wordSel.first ];
+    method ActionValue#( MemResp ) resp;
+        let cl <- mem.resp; off.deq;
+        return cl[ off.first ];
     endmethod
     
 endmodule
 
 module mkCache( WideMem mem, Cache ifc );
     
-    Vector#( TLog#( CacheRows ), Reg#( CacheLine ) )          datArr <- replicateM( mkReg( replicate( 0 ) ) );
-    Vector#( TLog#( CacheRows ), Reg#( Maybe#( CacheTag ) ) ) tagArr <- replicateM( mkReg( tagged Invalid ) );
-    Vector#( TLog#( CacheRows ), Reg#( Bool ) )               drtArr <- replicateM( mkReg( False ) );
+    Vector#( CacheRows, Reg#( CacheLine ) )          datArr <- replicateM( mkReg( replicate( 0 ) ) );
+    Vector#( CacheRows, Reg#( Maybe#( CacheTag ) ) ) tagArr <- replicateM( mkReg( tagged Invalid ) );
+    Vector#( CacheRows, Reg#( Bool ) )               drtArr <- replicateM( mkReg( False ) );
     
     Fifo#( 2, Data ) hitQ <- mkCFFifo;
     
@@ -45,41 +45,39 @@ module mkCache( WideMem mem, Cache ifc );
         
         let idx = getIdx( missReq.addr );
         let tag = tagArr[ idx ];
-        let drt = drtArr[ idx ];
         
-        if( isValid( tag ) && drt ) begin
-            let addr = { fromMaybe( ?, tag ), idx, 6'b0 }; // 6 is really TLog#(CacheLineBytes)
-            let data = datArr[ idx ];
-            mem.req( WideMemReq{ write_en: '1, addr: addr, data: data } );
+        if( isValid( tag ) && drtArr[ idx ] ) begin
+            Addr addr = { fromMaybe( ?, tag ), idx, '0 };
+            mem.req( WideMemReq{ write_en: '1, addr: addr, data: datArr[ idx ] } );
         end
         
         status <= SendFillReq;
         
     endrule
     
-    // Read Memory
+    // Read DRAM
     rule sendFillReq( status == SendFillReq );
         mem.req( toWideMemReq( missReq ) );
         status <= WaitFillResp;
     endrule
     
     // Update Cache
-    rule waitFillResp( status == WaitFillResp && hitQ.notFull );
+    rule waitFillResp( status == WaitFillResp );
         
         let off = getOff( missReq.addr );
         let idx = getIdx( missReq.addr );
         let tag = getTag( missReq.addr );
-        let dat = datArr[ idx ];
+        let cl  = datArr[ idx ];
         let st  = missReq.op == St;
         
-        if( st ) dat[ off ] = missReq.data;
+        if( st ) cl[ off ] = missReq.data;
         else begin
-            dat <- mem.resp;
-            hitQ.enq( dat[ off ] );
+            cl <- mem.resp;
+            hitQ.enq( cl[ off ] );
         end
         
-        datArr[ idx ] <= dat;
-        tagArr[ idx ] <= Valid( tag );
+        datArr[ idx ] <= cl;
+        tagArr[ idx ] <= tagged Valid tag;
         drtArr[ idx ] <= st;
         
         status <= Ready;
@@ -93,6 +91,8 @@ module mkCache( WideMem mem, Cache ifc );
         let tag  = getTag( r.addr );
         let cTag = tagArr[ idx ];
         let hit  = isValid( cTag ) ? fromMaybe( ?, cTag ) == tag : False;
+        
+        //$fwrite( stderr, "pc: %x; tag: %x; idx: %x; off: %x; hit: %x\n", r.addr, tag, idx, off, hit );
         
         if( hit ) begin
             let cl = datArr[ idx ];
@@ -109,7 +109,7 @@ module mkCache( WideMem mem, Cache ifc );
     
     endmethod
     
-    method ActionValue#( Data ) resp if( hitQ.notEmpty );
+    method ActionValue#( Data ) resp;
         hitQ.deq;
         return hitQ.first;
     endmethod
