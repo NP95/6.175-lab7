@@ -35,12 +35,13 @@ median.large    20749196        43898770        0.473
 multiply.large  231458271       450184484       0.514
 qsort.large     235079768       551403590       0.426
 vvadd.large     10000030        24602440        0.406
+mandelbrot	57273316	110237555	0.520
 
 
 Discussion Question 3 (10 Points): How many cycles does the Mandelbrot program take to execute in your processor? How long does the Mandel-
 brot program take to execute in seconds? Estimate how much of a speedup you are seeing in hardware versus simulation.
 
-Cycles: 
-Seconds: 
+Cycles: 110237555
+Seconds: 5.512 seconds
 Speedup: 
 
