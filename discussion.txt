@@ -43,5 +43,5 @@ brot program take to execute in seconds? Estimate how much of a speedup you are 
 
 Cycles: 110237555
 Seconds: 5.512 seconds
-Speedup: 
+Speedup: ~3000x
 
