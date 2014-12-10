@@ -29,7 +29,7 @@ endmodule
 
 module mkCache( WideMem _mem, Cache ifc );
     
-    L2Cache mem <- mkSACache( _mem );
+    L2Cache mem <- mkSACache( _mem, True );
     
     Vector#( CacheRows, Reg#( CacheLine ) )          datArr <- replicateM( mkReg( replicate( 0 ) ) );
     Vector#( CacheRows, Reg#( Maybe#( CacheTag ) ) ) tagArr <- replicateM( mkReg( tagged Invalid ) );

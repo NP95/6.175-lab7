@@ -4,7 +4,7 @@ import CacheTypes::*;
 import Fifo::*;
 import Vector::*;
 
-typedef 16 SACacheSize;
+typedef 64 SACacheSize;
 typedef 4 NumSets;
 typedef TDiv#( SACacheSize, NumSets ) NumSlots;
 
@@ -24,13 +24,13 @@ interface L2Cache;
     method ActionValue#( CacheLine ) resp;
 endinterface
 
-module mkSACache( WideMem mem, L2Cache ifc );
+module mkSACache( WideMem mem, Bool wb, L2Cache ifc );
     
     Vector#( NumSets, Vector#( NumSlots, Reg#( SACacheTag ) ) )
-        tag <- replicateM( replicateM( mkRegU ) );
+        tag <- replicateM( replicateM( mkReg( 0 ) ) );
     
     Vector#( NumSets, Vector#( NumSlots, Reg#( CacheLine ) ) )
-        data <- replicateM( replicateM( mkRegU ) );
+        data <- replicateM( replicateM( mkReg( replicate( 0 ) ) ) );
     
     Vector#( NumSets, Vector#( NumSlots, Reg#( Bool ) ) )
         dirty <- replicateM( replicateM( mkReg( False ) ) );
@@ -46,6 +46,7 @@ module mkSACache( WideMem mem, L2Cache ifc );
     
     function SACacheTag getSACacheTag( Addr a ) = truncateLSB( a );
     function SetIdx getSetIdx( Addr a ) = truncateLSB( a << valueOf( NumCacheTagBits ) );
+    function Bit#( 26 ) getMSBAddr( Addr a ) = truncate( a >> 6 );
     
     function SlotIdx getLRUSlotIdx( SetIdx s );
         SlotIdx idx = 0;
@@ -73,12 +74,11 @@ module mkSACache( WideMem mem, L2Cache ifc );
     
     rule writeBack( status == WriteBack );
         
-        let t = getSACacheTag( missReq.addr );
         let s = getSetIdx( missReq.addr );
         
         if( dirty[ s ][ lru ] ) mem.req( WideMemReq{
             write_en: '1,
-            addr: { tag[ s ][ lru ], s, 0 },
+            addr: { getMSBAddr( missReq.addr ), 0 },
             data: data[ s ][ lru ]
         } );
         
@@ -120,12 +120,13 @@ module mkSACache( WideMem mem, L2Cache ifc );
             else begin
                 data [ s ][ l ] <= r.data;
                 dirty[ s ][ l ] <= True;
+                if( !wb ) mem.req( r );
             end
             zeroAge( s, l );
         end else begin
             lru     <= getLRUSlotIdx( s );
             missReq <= r;
-            status  <= WriteBack;
+            if( wb ) status <= WriteBack; else status <= SendFillReq;
         end
     endmethod
     
