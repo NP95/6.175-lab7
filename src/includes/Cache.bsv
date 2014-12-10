@@ -5,6 +5,8 @@ import MemUtil::*;
 import Vector::*;
 import Fifo::*;
 
+import SACache::*;
+
 typedef enum { Ready, StartMiss, SendFillReq, WaitFillResp } CacheStatus deriving ( Bits, Eq );
 
 module mkTranslator( WideMem mem, Cache ifc );
@@ -25,7 +27,9 @@ module mkTranslator( WideMem mem, Cache ifc );
     
 endmodule
 
-module mkCache( WideMem mem, Cache ifc );
+module mkCache( WideMem _mem, Cache ifc );
+    
+    L2Cache mem <- mkSACache( _mem );
     
     Vector#( CacheRows, Reg#( CacheLine ) )          datArr <- replicateM( mkReg( replicate( 0 ) ) );
     Vector#( CacheRows, Reg#( Maybe#( CacheTag ) ) ) tagArr <- replicateM( mkReg( tagged Invalid ) );
