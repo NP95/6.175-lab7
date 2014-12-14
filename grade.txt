@@ -1,0 +1,7 @@
+Username: akashk16
+Grade: 95%
+Comments: Good job.
+
+Discussion question 3) With a 50 MHz clock, the 110,237,555 cycles of the
+mandelbrot program will take just over two seconds resulting in about a 600x
+speedup
